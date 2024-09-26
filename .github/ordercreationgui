@@ -1,0 +1,132 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+
+public class OrderCreationGUI extends JFrame {
+    private InventoryManager inventoryManager;
+    private JTextField itemNameField;
+    private JTextField quantityField;
+    private JTextArea orderSummary;
+    private JButton addItemButton;
+    private JButton createOrderButton;
+    private Map<String, Integer> orderItems;
+
+    public OrderCreationGUI(InventoryManager manager) {
+        this.inventoryManager = manager;
+        this.orderItems = new HashMap<>();
+
+        setTitle("Create Order");
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Create panels
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+
+        // Create components
+        itemNameField = new JTextField(20);
+        quantityField = new JTextField(5);
+        addItemButton = new JButton("Add Item");
+        createOrderButton = new JButton("Create Order");
+        orderSummary = new JTextArea(10, 30);
+        orderSummary.setEditable(false);
+
+        // Add components to panels
+        inputPanel.add(new JLabel("Item Name:"));
+        inputPanel.add(itemNameField);
+        inputPanel.add(new JLabel("Quantity:"));
+        inputPanel.add(quantityField);
+        inputPanel.add(new JLabel(""));
+        inputPanel.add(addItemButton);
+
+        buttonPanel.add(createOrderButton);
+
+        // Add panels to frame
+        add(inputPanel, BorderLayout.NORTH);
+        add(new JScrollPane(orderSummary), BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // Add action listeners
+        addItemButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addItemToOrder();
+            }
+        });
+
+        createOrderButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                createOrder();
+            }
+        });
+    }
+
+    private void addItemToOrder() {
+        String itemName = itemNameField.getText().trim();
+        String quantityStr = quantityField.getText().trim();
+
+        if (itemName.isEmpty() || quantityStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter both item name and quantity.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            int quantity = Integer.parseInt(quantityStr);
+            if (quantity <= 0) {
+                throw new NumberFormatException();
+            }
+
+            orderItems.put(itemName, orderItems.getOrDefault(itemName, 0) + quantity);
+            updateOrderSummary();
+            itemNameField.setText("");
+            quantityField.setText("");
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid positive integer for quantity.", "Input Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateOrderSummary() {
+        StringBuilder summary = new StringBuilder("Order Summary:\n");
+        for (Map.Entry<String, Integer> entry : orderItems.entrySet()) {
+            summary.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+        }
+        orderSummary.setText(summary.toString());
+    }
+
+    private void createOrder() {
+        if (orderItems.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please add items to the order before creating it.", "Empty Order", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String username = JOptionPane.showInputDialog(this, "Enter your username:");
+        if (username != null && !username.trim().isEmpty()) {
+            boolean success = inventoryManager.createOrder(username, orderItems);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Order created successfully!", "Order Created", JOptionPane.INFORMATION_MESSAGE);
+                orderItems.clear();
+                updateOrderSummary();
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to create order. Please check inventory levels.", "Order Creation Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        InventoryManager manager = new InventoryManager();
+        // Add some sample inventory
+        manager.addItem("Laptop", 10);
+        manager.addItem("Mouse", 20);
+        manager.addItem("Keyboard", 15);
+
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new OrderCreationGUI(manager).setVisible(true);
+            }
+        });
+    }
+}
